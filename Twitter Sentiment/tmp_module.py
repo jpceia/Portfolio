@@ -9,9 +9,6 @@ from sklearn.model_selection import learning_curve as skl_learning_curve
 from sklearn.utils import shuffle
 from matplotlib import pyplot
 
-import os
-print(os.path.dirname(os.path.realpath(__file__)))
-
 
 class PoissonNaiveBayes(BaseEstimator, RegressorMixin):
     def __init__(self, n=1):
