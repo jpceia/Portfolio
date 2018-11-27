@@ -1,11 +1,13 @@
 import pandas as pd
 import numpy as np
 from scipy.special import expit
-from collections import Counter
-from sklearn.base import clone, BaseEstimator, RegressorMixin
+from collections import Counter, defaultdict
+from sklearn.base import clone, BaseEstimator, RegressorMixin, TransformerMixin
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.model_selection import validation_curve as skl_validation_curve
 from sklearn.model_selection import learning_curve as skl_learning_curve
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+#from gensim.models.keyedvectors import KeyedVectors
 from sklearn.utils import shuffle
 from matplotlib import pyplot
 
@@ -35,6 +37,17 @@ class PoissonNaiveBayes(BaseEstimator, RegressorMixin):
     
     def predict(self, X):
         return self.predict_proba(X) > .5
+
+
+class ItemSelector(BaseEstimator, TransformerMixin):
+    def __init__(self, key):
+        self.key = key
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, data_dict):
+        return data_dict[self.key]
 
 
 def validation_curve(estimator, X, y, scoring, param_name,
@@ -130,3 +143,31 @@ def learning_curve(estimator, X, y, scoring='roc_auc',
     pyplot.xlim([0, X.shape[0]])
 
     pyplot.legend(loc="best")
+
+
+class TfidfEmbeddingVectorizer(BaseEstimator, TransformerMixin):
+    def __init__(self, vec):
+        self.vec = vec
+        self.weight = None
+
+    def fit(self, X, y=None):
+        tfidf = TfidfVectorizer()
+        tfidf.fit(X)
+        max_idf = max(tfidf.idf_)
+        self.weight = defaultdict(
+            lambda: max_idf,
+            [(w, tfidf.idf_[i]) for w, i in tfidf.vocabulary_.items()])
+        return self
+
+    def transform(self, X):
+        res = []
+        dummy = [np.zeros(self.vec.vector_size)]
+        for Xrow in X:
+            tmp = []
+            for w in Xrow.split(" "):
+                if w in self.vec:
+                    tmp.append(self.vec[w] * self.weight[w])
+            if len(tmp) == 0:
+                tmp = dummy
+            res.append(np.mean(tmp, axis=0))
+        return np.array(res)
