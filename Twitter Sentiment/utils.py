@@ -1,42 +1,12 @@
-import pandas as pd
 import numpy as np
-from scipy.special import expit
-from collections import Counter, defaultdict
+from collections import defaultdict
 from sklearn.base import clone, BaseEstimator, RegressorMixin, TransformerMixin
-from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.model_selection import validation_curve as skl_validation_curve
 from sklearn.model_selection import learning_curve as skl_learning_curve
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 #from gensim.models.keyedvectors import KeyedVectors
 from sklearn.utils import shuffle
 from matplotlib import pyplot
-
-
-class PoissonNaiveBayes(BaseEstimator, RegressorMixin):
-    def __init__(self, n=1):
-        self.n = n
-        
-    def fit(self, X, y):
-        self.n0_ = (y == 0).sum() # S0
-        self.n1_ = (y == 1).sum() # S1
-        w0 = pd.Series(X[y == 0].sum()) # {tweet|tweet\in S_0, x_i \in tweet}
-        w1 = pd.Series(X[y == 1].sum()) # {tweet|tweet\in S_0, x_i \in tweet}
-        self.theta0_ = w0.mean() / self.n0_ # theta0
-        self.theta1_ = w1.mean() / self.n1_ # theta1
-        self.l0_ = (w0 + self.n * self.theta0_) / (self.n0_ + self.n) # \lambda_i0
-        self.l1_ = (w1 + self.n * self.theta0_) / (self.n1_ + self.n) # \lambda_i1
-        return self
-    
-    def predict_proba(self, X):
-        # we assume each X[i] is a counter
-        L0 = self.l0_.sum()
-        L1 = self.l1_.sum()
-        p0 = np.log(self.n0_) - L0 + pd.Series(X).map(lambda x: np.log((self.l0_.reindex(x.keys())) * pd.Series(x)).fillna(self.theta0_).sum())
-        p1 = np.log(self.n1_) - L1 + pd.Series(X).map(lambda x: np.log((self.l1_.reindex(x.keys())) * pd.Series(x)).fillna(self.theta1_).sum())
-        return expit(p0 - p1)
-    
-    def predict(self, X):
-        return self.predict_proba(X) > .5
 
 
 class ItemSelector(BaseEstimator, TransformerMixin):
